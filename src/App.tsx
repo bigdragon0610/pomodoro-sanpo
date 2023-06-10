@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-const POMODORO_TIME = 4
-const MAX_DISTANCE = 50
+const POMODORO_TIME = 60 * 25
+const MAX_DISTANCE = 500
 
 const calculateDistance = (
   initialLatitude: number,
@@ -103,7 +103,7 @@ function App() {
             newPosition.coords.latitude,
             positionRef.current.coords.longitude,
             newPosition.coords.longitude
-          ) + 10
+          )
         )
         if (dif >= 10) {
           distanceRef.current += dif
@@ -130,7 +130,7 @@ function App() {
     if (!isWalking) {
       return
     }
-    intervalRef.current = setInterval(updateDistance, 3000)
+    intervalRef.current = setInterval(updateDistance, 30000)
   }, [isWalking, updateDistance])
 
   return (
