@@ -103,13 +103,15 @@ function App() {
             newPosition.coords.latitude,
             positionRef.current.coords.longitude,
             newPosition.coords.longitude
-          )
+          ) + 10
         )
-        distanceRef.current += dif
-        if (distanceRef.current >= MAX_DISTANCE) {
-          distanceRef.current = MAX_DISTANCE
+        if (dif >= 1) {
+          distanceRef.current += dif
+          if (distanceRef.current >= MAX_DISTANCE) {
+            distanceRef.current = MAX_DISTANCE
+          }
+          setDistance(distanceRef.current)
         }
-        setDistance(distanceRef.current)
       }
       positionRef.current = newPosition
     })
