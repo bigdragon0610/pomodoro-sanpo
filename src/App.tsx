@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-const POMODORO_TIME = 25 * 60
-const MAX_DISTANCE = 500
+const POMODORO_TIME = 10
+const MAX_DISTANCE = 50
 
 const calculateDistance = (
   initialLatitude: number,
@@ -121,7 +121,7 @@ function App() {
         console.log(positionRef.current)
       })
     }
-    const interval = setInterval(updateDistance, 30000)
+    const interval = setInterval(updateDistance, 5000)
 
     return () => {
       clearInterval(interval)
