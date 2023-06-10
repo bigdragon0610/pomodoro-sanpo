@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-const POMODORO_TIME = 10
+const POMODORO_TIME = 4
 const MAX_DISTANCE = 50
 
 const calculateDistance = (
@@ -48,137 +48,139 @@ const formatTime = (time: number) => {
 
 function App() {
   const positionRef = useRef<GeolocationPosition | null>(null)
+  const distanceRef = useRef(0)
   const [distance, setDistance] = useState(0)
   const [isWalking, setIsWalking] = useState(false)
+  const intervalRef = useRef<NodeJS.Timeout>()
+
   const [isRunning, setIsRunning] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const secondsRef = useRef(POMODORO_TIME)
   const [seconds, setSeconds] = useState(POMODORO_TIME)
 
-  const countDown = () => {
-    if (seconds === 1) {
+  const stopTimer = useCallback(() => {
+    setIsRunning(false)
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+    }
+  }, [])
+
+  const countDown = useCallback(() => {
+    if (secondsRef.current <= 0) {
       setSeconds(0)
       stopTimer()
       setIsRunning(false)
       setIsWalking(true)
       return
     }
-    setSeconds((prev) => prev - 1)
-  }
+    secondsRef.current -= 1
+    setSeconds(secondsRef.current)
+  }, [stopTimer])
 
-  const startTimer = () => {
+  const startTimer = useCallback(() => {
+    distanceRef.current = 0
+    setDistance(0)
     setIsWalking(false)
     setIsRunning(true)
     timerRef.current = setInterval(countDown, 1000)
-  }
+  }, [countDown])
 
-  const stopTimer = () => {
+  const resetTimer = useCallback(() => {
     setIsRunning(false)
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-    }
-  }
-
-  const resetTimer = () => {
-    setIsRunning(false)
+    secondsRef.current = POMODORO_TIME
     setSeconds(POMODORO_TIME)
     if (timerRef.current) {
       clearInterval(timerRef.current)
     }
-  }
+  }, [])
+
+  const updateDistance = useCallback(() => {
+    navigator.geolocation.getCurrentPosition((newPosition) => {
+      if (positionRef.current) {
+        const dif = Math.floor(
+          calculateDistance(
+            positionRef.current.coords.latitude,
+            newPosition.coords.latitude,
+            positionRef.current.coords.longitude,
+            newPosition.coords.longitude
+          ) + 10
+        )
+        if (dif >= 10) {
+          distanceRef.current += dif
+          if (distanceRef.current >= MAX_DISTANCE) {
+            distanceRef.current = MAX_DISTANCE
+          }
+          setDistance(distanceRef.current)
+        }
+      }
+      positionRef.current = newPosition
+    })
+  }, [])
+
+  useEffect(() => {
+    if (distance === MAX_DISTANCE) {
+      clearInterval(intervalRef.current)
+      setIsWalking(false)
+      resetTimer()
+      return
+    }
+  }, [resetTimer, distance])
 
   useEffect(() => {
     if (!isWalking) {
       return
     }
-    const updateDistance = () => {
-      if (distance >= MAX_DISTANCE) {
-        alert('散歩お疲れ様です！')
-        setIsWalking(false)
-        setDistance(0)
-        setSeconds(POMODORO_TIME)
-        return
-      }
-      navigator.geolocation.getCurrentPosition((newPosition) => {
-        if (positionRef.current) {
-          const dif = Math.floor(
-            calculateDistance(
-              positionRef.current.coords.latitude,
-              newPosition.coords.latitude,
-              positionRef.current.coords.longitude,
-              newPosition.coords.longitude
-            )
-          )
-          if (dif >= 10) {
-            setDistance((prev) => {
-              if (prev + dif >= MAX_DISTANCE) {
-                return MAX_DISTANCE
-              }
-              return prev + dif
-            })
-          }
-        }
-        positionRef.current = newPosition
-        console.log(positionRef.current)
-      })
-    }
-    const interval = setInterval(updateDistance, 5000)
-
-    return () => {
-      clearInterval(interval)
-    }
-  }, [distance, isWalking])
+    intervalRef.current = setInterval(updateDistance, 3000)
+  }, [isWalking, updateDistance])
 
   return (
     <div className="bg-blue-50 w-full h-[100dvh]">
       <header className="h-16 bg-white flex items-center px-5">
         <h1 className="font-bold text-lg">POMO道路</h1>
       </header>
-      <main>
-        <section className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div
-            className={
-              'flex flex-col items-center ' +
-              (isWalking ? 'text-gray-400 pointer-events-none' : '')
-            }
-          >
-            <div className="text-7xl font-bold font-mono">
-              {formatTime(seconds)}
-            </div>
-            <div className="flex text-4xl mt-3 gap-2">
-              <button
-                onClick={startTimer}
-                className={isRunning ? 'hidden' : 'w-16 h-16'}
-              >
-                ▶
-              </button>
-              <button
-                onClick={stopTimer}
-                className={isRunning ? 'w-16 h-16' : 'hidden'}
-              >
-                ■
-              </button>
-              <button onClick={resetTimer} className="w-16 h-16">
-                ↺
-              </button>
-            </div>
+      <main className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div
+          className={
+            'flex flex-col items-center ' +
+            (isWalking ? 'text-gray-400 pointer-events-none' : '')
+          }
+        >
+          <div className="text-7xl font-bold font-mono">
+            {formatTime(seconds)}
           </div>
-          <div
-            className={
-              isWalking
-                ? 'absolute left-1/2 -translate-x-1/2 mt-5 w-full h-12 bg-white border-2 border-blue-500'
-                : 'hidden'
-            }
-          >
-            <div
-              className="bg-blue-500 h-full"
-              style={{ width: `${(distance * 100) / MAX_DISTANCE}%` }}
-            />
-            <p className="flex justify-between mt-1">
-              <span>0m</span>
-              <span>{MAX_DISTANCE}m</span>
-            </p>
+          <div className="flex text-4xl mt-3 gap-2">
+            <button
+              onClick={startTimer}
+              className={isRunning ? 'hidden' : 'w-16 h-16'}
+            >
+              ▶
+            </button>
+            <button
+              onClick={stopTimer}
+              className={isRunning ? 'w-16 h-16' : 'hidden'}
+            >
+              ■
+            </button>
+            <button onClick={resetTimer} className="w-16 h-16">
+              ↺
+            </button>
           </div>
-        </section>
+        </div>
+        <div
+          className={
+            'mt-5 w-full h-12 bg-white border-2 border-blue-500 ' +
+            (!isWalking && distance === 0 ? 'invisible' : '')
+          }
+        >
+          <div
+            className="bg-blue-500 h-full"
+            style={{ width: `${(distance * 100) / MAX_DISTANCE}%` }}
+          />
+          <p className="flex justify-between mt-1">
+            <span>0m</span>
+            <span>{MAX_DISTANCE}m</span>
+          </p>
+        </div>
       </main>
     </div>
   )
