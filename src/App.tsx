@@ -103,7 +103,7 @@ function App() {
             newPosition.coords.latitude,
             positionRef.current.coords.longitude,
             newPosition.coords.longitude
-          ) + 10
+          )
         )
         if (dif >= 1) {
           distanceRef.current += dif
